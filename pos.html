@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta
+name="viewport"
+content="width=device-width,initial-scale=1.0">
+
+<title>Offline POS System</title>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,sans-serif;
+}
+
+body{
+    background:#111;
+    color:#eee;
+    padding-bottom:80px;
+}
+
+.hidden{
+    display:none!important;
+}
+
+.topbar{
+    position:sticky;
+    top:0;
+    z-index:100;
+    background:#1b1b1b;
+    border-bottom:1px solid #333;
+    padding:8px 12px;
+    font-size:12px;
+    color:#aaa;
+}
+
+.launch-screen{
+    padding:30px 20px;
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+}
+
+.launch-card{
+    background:#1c1c1c;
+    border:1px solid #333;
+    border-radius:18px;
+    padding:25px;
+}
+
+.launch-card h2{
+    margin-bottom:10px;
+}
+
+.small{
+    font-size:12px;
+    color:#888;
+}
+
+button{
+    border:none;
+    background:#2d2d2d;
+    color:white;
+    padding:14px;
+    border-radius:12px;
+    cursor:pointer;
+    font-size:15px;
+}
+
+button:hover{
+    background:#3a3a3a;
+}
+
+.main{
+    display:none;
+}
+
+.page{
+    display:none;
+    padding:15px;
+}
+
+.page.active{
+    display:block;
+}
+
+h1{
+    margin-bottom:15px;
+    font-size:24px;
+}
+
+.card{
+    background:#1b1b1b;
+    border:1px solid #2d2d2d;
+    border-radius:18px;
+    padding:15px;
+    margin-bottom:15px;
+}
+
+.card-title{
+    margin-bottom:12px;
+    font-size:18px;
+}
+
+input,
+select{
+    width:100%;
+    background:#2a2a2a;
+    color:white;
+    border:none;
+    border-radius:12px;
+    padding:12px;
+    margin-bottom:10px;
+}
+
+.flex{
+    display:flex;
+    gap:10px;
+}
+
+.flex button{
+    flex:1;
+}
+
+.stat-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+}
+
+.stat-box{
+    background:#232323;
+    border-radius:16px;
+    padding:15px;
+}
+
+.stat-label{
+    font-size:12px;
+    color:#999;
+    margin-bottom:8px;
+}
+
+.stat-value{
+    font-size:22px;
+    font-weight:bold;
+}
+
+.item-row{
+    background:#232323;
+    border-radius:16px;
+    padding:14px;
+    margin-bottom:10px;
+}
+
+.item-name{
+    font-weight:bold;
+    margin-bottom:5px;
+}
+
+.item-small{
+    font-size:13px;
+    color:#aaa;
+    margin-bottom:3px;
+}
+
+.bottom-nav{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    height:65px;
+    background:#1b1b1b;
+    border-top:1px solid #333;
+    display:flex;
+}
+
+.nav-btn{
+    flex:1;
+    border-radius:0;
+    background:none;
+    color:#999;
+    font-size:12px;
+}
+
+.nav-btn.active{
+    background:#252525;
+    color:white;
+}
+
+.green{
+    color:#73dd73;
+}
+
+.red{
+    color:#ff6d6d;
+}
+
+#scannerModal{
+    position:fixed;
+    inset:0;
+    background:#000000ee;
+    z-index:9999;
+    padding:20px;
+}
+
+#reader{
+    width:100%;
+    max-width:500px;
+    margin:auto;
+    overflow:hidden;
+    border-radius:16px;
+}
+
+</style>
+</head>
+<body>
+
+<div class="topbar" id="topbar">
+    No database loaded
+</div>
+
+<input
+type="file"
+id="importJsonInput"
+accept=".json"
+style="display:none">
+
+<div class="launch-screen" id="launchScreen">
+
+    <div class="launch-card">
+
+        <h2>Offline POS System</h2>
+
+        <div class="small">
+            Android Compatible JSON Database
+        </div>
+
+    </div>
+
+    <button onclick="createDatabaseFallback()">
+        Create New Database
+    </button>
+
+    <button onclick="importDatabase()">
+        Open Existing Database
+    </button>
+
+</div>
+
+<div class="main" id="mainApp">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="dashboardPage">
+
+        <h1>Dashboard</h1>
+
+        <div class="stat-grid">
+
+            <div class="stat-box">
+                <div class="stat-label">
+                    Revenue
+                </div>
+
+                <div
+                class="stat-value"
+                id="revenueStat">
+                    £0
+                </div>
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-label">
+                    Profit
+                </div>
+
+                <div
+                class="stat-value green"
+                id="profitStat">
+                    £0
+                </div>
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-label">
+                    Inventory
+                </div>
+
+                <div
+                class="stat-value"
+                id="inventoryStat">
+                    £0
+                </div>
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-label">
+                    Expenses
+                </div>
+
+                <div
+                class="stat-value red"
+                id="expenseStat">
+                    £0
+                </div>
+            </div>
+
+        </div>
+
+        <div class="card">
+
+            <div class="card-title">
+                Tax Year Profit
+            </div>
+
+            <div
+            style="font-size:30px;font-weight:bold"
+            id="taxYearProfit">
+                £0
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- INVENTORY -->
+    <div class="page" id="inventoryPage">
+
+        <h1>Inventory</h1>
+
+        <div class="card">
+
+            <input
+            id="invName"
+            placeholder="Item Name">
+
+            <div class="flex">
+
+                <input
+                id="invBarcode"
+                placeholder="Barcode">
+
+                <button
+                type="button"
+                onclick="startBarcodeScanner('inventory')">
+                    Scan
+                </button>
+
+            </div>
+
+            <input
+            id="invCost"
+            type="number"
+            placeholder="Cost Price">
+
+            <input
+            id="invQty"
+            type="number"
+            placeholder="Quantity">
+
+            <button onclick="addInventory()">
+                Add Inventory
+            </button>
+
+        </div>
+
+        <div id="inventoryList"></div>
+
+    </div>
+
+    <!-- SALES -->
+    <div class="page" id="salesPage">
+
+        <h1>Sales</h1>
+
+        <div class="card">
+
+            <button
+            type="button"
+            onclick="startBarcodeScanner('sale')">
+                Scan Item Barcode
+            </button>
+
+            <br><br>
+
+            <select id="saleItem"></select>
+
+            <input
+            id="saleQty"
+            type="number"
+            value="1"
+            placeholder="Quantity">
+
+            <input
+            id="salePrice"
+            type="number"
+            placeholder="Sale Price">
+
+            <input
+            id="salePlatform"
+            list="platformList"
+            placeholder="Platform">
+
+            <datalist id="platformList"></datalist>
+
+            <input
+            id="saleFees"
+            type="number"
+            placeholder="Platform Fees">
+
+            <input
+            id="saleShipping"
+            type="number"
+            placeholder="Shipping Cost">
+
+            <button onclick="addSale()">
+                Log Sale
+            </button>
+
+        </div>
+
+        <div id="salesList"></div>
+
+    </div>
+
+    <!-- EXPENSE -->
+    <div class="page" id="expensePage">
+
+        <h1>Expenses</h1>
+
+        <div class="card">
+
+            <input
+            id="expenseName"
+            placeholder="Expense Name">
+
+            <input
+            id="expenseAmount"
+            type="number"
+            placeholder="Amount">
+
+            <button onclick="addExpense()">
+                Add Expense
+            </button>
+
+        </div>
+
+        <div id="expenseList"></div>
+
+    </div>
+
+    <!-- REPORT -->
+    <div class="page" id="reportPage">
+
+        <h1>Reports</h1>
+
+        <div class="card">
+
+            <button onclick="exportCSV()">
+                Export Sales CSV
+            </button>
+
+        </div>
+
+        <div class="card">
+
+            <button onclick="saveDatabase()">
+                Export JSON Database
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="bottom-nav hidden" id="bottomNav">
+
+    <button
+    class="nav-btn active"
+    onclick="switchPage('dashboardPage',this)">
+        Dashboard
+    </button>
+
+    <button
+    class="nav-btn"
+    onclick="switchPage('inventoryPage',this)">
+        Inventory
+    </button>
+
+    <button
+    class="nav-btn"
+    onclick="switchPage('salesPage',this)">
+        Sales
+    </button>
+
+    <button
+    class="nav-btn"
+    onclick="switchPage('expensePage',this)">
+        Expenses
+    </button>
+
+    <button
+    class="nav-btn"
+    onclick="switchPage('reportPage',this)">
+        Reports
+    </button>
+
+</div>
+
+<div id="scannerModal" class="hidden">
+
+    <div id="reader"></div>
+
+    <button
+    style="width:100%;margin-top:20px"
+    onclick="stopScanner()">
+        Close Scanner
+    </button>
+
+</div>
+
+<script>
+
+let currentFileName =
+    "pos_database.json";
+
+let html5QrCode = null;
+
+let db = {
+    meta:{
+        created:new Date().toISOString()
+    },
+    inventory:[],
+    sales:[],
+    expenses:[],
+    platforms:[]
+};
+
+function updateTopbar(text){
+
+    document
+    .getElementById("topbar")
+    .innerText = text;
+}
+
+function createDatabaseFallback(){
+
+    db = {
+        meta:{
+            created:new Date().toISOString()
+        },
+        inventory:[],
+        sales:[],
+        expenses:[],
+        platforms:[]
+    };
+
+    launchApp();
+
+    exportDatabase();
+
+    updateTopbar(
+        "New database created"
+    );
+}
+
+function importDatabase(){
+
+    const input =
+        document.getElementById(
+            "importJsonInput"
+        );
+
+    input.onchange = async (e)=>{
+
+        const file =
+            e.target.files[0];
+
+        if(!file) return;
+
+        currentFileName =
+            file.name;
+
+        const text =
+            await file.text();
+
+        db = JSON.parse(text);
+
+        launchApp();
+
+        updateTopbar(
+            "Loaded: " + file.name
+        );
+    };
+
+    input.click();
+}
+
+function launchApp(){
+
+    document
+    .getElementById("launchScreen")
+    .style.display = "none";
+
+    document
+    .getElementById("mainApp")
+    .style.display = "block";
+
+    document
+    .getElementById("bottomNav")
+    .classList.remove("hidden");
+
+    renderAll();
+}
+
+async function saveDatabase(){
+
+    exportDatabase();
+
+    updateTopbar(
+        "Database Exported"
+    );
+}
+
+function exportDatabase(){
+
+    const blob =
+        new Blob(
+            [
+                JSON.stringify(db,null,2)
+            ],
+            {
+                type:"application/json"
+            }
+        );
+
+    const a =
+        document.createElement("a");
+
+    a.href =
+        URL.createObjectURL(blob);
+
+    a.download =
+        currentFileName;
+
+    a.click();
+}
+
+function switchPage(pageId,btn){
+
+    document
+    .querySelectorAll(".page")
+    .forEach(p=>{
+        p.classList.remove("active");
+    });
+
+    document
+    .getElementById(pageId)
+    .classList.add("active");
+
+    document
+    .querySelectorAll(".nav-btn")
+    .forEach(b=>{
+        b.classList.remove("active");
+    });
+
+    btn.classList.add("active");
+}
+
+function generateId(prefix){
+
+    return prefix + "_" +
+    Math.random()
+    .toString(36)
+    .substring(2,9);
+}
+
+async function addInventory(){
+
+    const name =
+        document
+        .getElementById("invName")
+        .value.trim();
+
+    const barcode =
+        document
+        .getElementById("invBarcode")
+        .value.trim();
+
+    const cost =
+        parseFloat(
+            document
+            .getElementById("invCost")
+            .value || 0
+        );
+
+    const qty =
+        parseInt(
+            document
+            .getElementById("invQty")
+            .value || 0
+        );
+
+    if(!name) return;
+
+    db.inventory.push({
+        id:generateId("itm"),
+        name,
+        barcode,
+        cost,
+        qty,
+        created:new Date().toISOString()
+    });
+
+    document.getElementById("invName").value = "";
+    document.getElementById("invBarcode").value = "";
+    document.getElementById("invCost").value = "";
+    document.getElementById("invQty").value = "";
+
+    renderAll();
+
+    await saveDatabase();
+}
+
+async function addSale(){
+
+    const itemId =
+        document
+        .getElementById("saleItem")
+        .value;
+
+    const qty =
+        parseInt(
+            document
+            .getElementById("saleQty")
+            .value || 1
+        );
+
+    const price =
+        parseFloat(
+            document
+            .getElementById("salePrice")
+            .value || 0
+        );
+
+    const platform =
+        document
+        .getElementById("salePlatform")
+        .value.trim();
+
+    const fees =
+        parseFloat(
+            document
+            .getElementById("saleFees")
+            .value || 0
+        );
+
+    const shipping =
+        parseFloat(
+            document
+            .getElementById("saleShipping")
+            .value || 0
+        );
+
+    if(!itemId) return;
+
+    const item =
+        db.inventory.find(
+            i=>i.id===itemId
+        );
+
+    if(!item) return;
+
+    if(item.qty < qty){
+
+        alert("Not enough stock");
+
+        return;
+    }
+
+    item.qty -= qty;
+
+    if(
+        platform &&
+        !db.platforms.includes(platform)
+    ){
+
+        db.platforms.push(platform);
+    }
+
+    const costTotal =
+        item.cost * qty;
+
+    const profit =
+        price
+        - costTotal
+        - fees
+        - shipping;
+
+    db.sales.push({
+
+        id:generateId("sale"),
+
+        itemId,
+
+        itemName:item.name,
+
+        qty,
+
+        salePrice:price,
+
+        platform,
+
+        fees,
+
+        shipping,
+
+        costTotal,
+
+        profit,
+
+        date:new Date().toISOString()
+
+    });
+
+    document.getElementById("salePrice").value = "";
+    document.getElementById("salePlatform").value = "";
+    document.getElementById("saleFees").value = "";
+    document.getElementById("saleShipping").value = "";
+
+    renderAll();
+
+    await saveDatabase();
+}
+
+async function addExpense(){
+
+    const name =
+        document
+        .getElementById("expenseName")
+        .value.trim();
+
+    const amount =
+        parseFloat(
+            document
+            .getElementById("expenseAmount")
+            .value || 0
+        );
+
+    if(!name) return;
+
+    db.expenses.push({
+
+        id:generateId("exp"),
+
+        name,
+
+        amount,
+
+        date:new Date().toISOString()
+
+    });
+
+    document.getElementById("expenseName").value = "";
+    document.getElementById("expenseAmount").value = "";
+
+    renderAll();
+
+    await saveDatabase();
+}
+
+function renderInventory(){
+
+    const container =
+        document.getElementById(
+            "inventoryList"
+        );
+
+    container.innerHTML = "";
+
+    db.inventory.forEach(item=>{
+
+        container.innerHTML += `
+            <div class="item-row">
+
+                <div class="item-name">
+                    ${item.name}
+                </div>
+
+                <div class="item-small">
+                    Stock: ${item.qty}
+                </div>
+
+                <div class="item-small">
+                    Cost: £${item.cost.toFixed(2)}
+                </div>
+
+                <div class="item-small">
+                    Barcode: ${item.barcode || "-"}
+                </div>
+
+                <div class="flex"
+                style="margin-top:10px">
+
+                    <button
+                    onclick="editInventory('${item.id}')">
+                        Edit
+                    </button>
+
+                    <button
+                    onclick="deleteInventory('${item.id}')">
+                        Delete
+                    </button>
+
+                </div>
+
+            </div>
+        `;
+    });
+}
+
+function renderSales(){
+
+    const container =
+        document.getElementById(
+            "salesList"
+        );
+
+    container.innerHTML = "";
+
+    [...db.sales]
+    .reverse()
+    .forEach(sale=>{
+
+        container.innerHTML += `
+            <div class="item-row">
+
+                <div class="item-name">
+                    ${sale.itemName}
+                </div>
+
+                <div class="item-small">
+                    Sold:
+                    £${sale.salePrice.toFixed(2)}
+                </div>
+
+                <div class="item-small">
+
+                    Profit:
+
+                    <span class="${
+                        sale.profit >=0
+                        ? 'green'
+                        : 'red'
+                    }">
+
+                        £${sale.profit.toFixed(2)}
+
+                    </span>
+
+                </div>
+
+                <div class="item-small">
+                    Platform:
+                    ${sale.platform || "-"}
+                </div>
+
+                <div class="item-small">
+                    ${new Date(
+                        sale.date
+                    ).toLocaleString()}
+                </div>
+
+                <div class="flex"
+                style="margin-top:10px">
+
+                    <button
+                    onclick="editSale('${sale.id}')">
+                        Edit
+                    </button>
+
+                    <button
+                    onclick="deleteSale('${sale.id}')">
+                        Delete
+                    </button>
+
+                </div>
+
+            </div>
+        `;
+    });
+}
+
+function renderExpenses(){
+
+    const container =
+        document.getElementById(
+            "expenseList"
+        );
+
+    container.innerHTML = "";
+
+    [...db.expenses]
+    .reverse()
+    .forEach(exp=>{
+
+        container.innerHTML += `
+            <div class="item-row">
+
+                <div class="item-name">
+                    ${exp.name}
+                </div>
+
+                <div class="item-small red">
+                    £${exp.amount.toFixed(2)}
+                </div>
+
+                <div class="item-small">
+                    ${new Date(
+                        exp.date
+                    ).toLocaleString()}
+                </div>
+
+                <div class="flex"
+                style="margin-top:10px">
+
+                    <button
+                    onclick="editExpense('${exp.id}')">
+                        Edit
+                    </button>
+
+                    <button
+                    onclick="deleteExpense('${exp.id}')">
+                        Delete
+                    </button>
+
+                </div>
+
+            </div>
+        `;
+    });
+}
+
+function populateItemSelect(){
+
+    const select =
+        document.getElementById(
+            "saleItem"
+        );
+
+    select.innerHTML = "";
+
+    db.inventory.forEach(item=>{
+
+        select.innerHTML += `
+            <option value="${item.id}">
+                ${item.name}
+                (${item.qty})
+            </option>
+        `;
+    });
+
+    const list =
+        document.getElementById(
+            "platformList"
+        );
+
+    list.innerHTML = "";
+
+    db.platforms.forEach(p=>{
+
+        list.innerHTML += `
+            <option value="${p}">
+        `;
+    });
+}
+
+function calculateStats(){
+
+    let revenue = 0;
+    let profit = 0;
+    let inventory = 0;
+    let expenses = 0;
+
+    db.sales.forEach(s=>{
+
+        revenue += s.salePrice;
+
+        profit += s.profit;
+    });
+
+    db.inventory.forEach(i=>{
+
+        inventory += i.cost * i.qty;
+    });
+
+    db.expenses.forEach(e=>{
+
+        expenses += e.amount;
+    });
+
+    profit -= expenses;
+
+    document
+    .getElementById("revenueStat")
+    .innerText =
+        "£" + revenue.toFixed(2);
+
+    document
+    .getElementById("profitStat")
+    .innerText =
+        "£" + profit.toFixed(2);
+
+    document
+    .getElementById("inventoryStat")
+    .innerText =
+        "£" + inventory.toFixed(2);
+
+    document
+    .getElementById("expenseStat")
+    .innerText =
+        "£" + expenses.toFixed(2);
+
+    document
+    .getElementById("taxYearProfit")
+    .innerText =
+        "£" + profit.toFixed(2);
+}
+
+function renderAll(){
+
+    renderInventory();
+
+    renderSales();
+
+    renderExpenses();
+
+    populateItemSelect();
+
+    calculateStats();
+}
+
+function exportCSV(){
+
+    let csv =
+`Date,Item,Qty,Price,Platform,Fees,Shipping,Profit\n`;
+
+    db.sales.forEach(s=>{
+
+        csv +=
+`${s.date},${s.itemName},${s.qty},${s.salePrice},${s.platform},${s.fees},${s.shipping},${s.profit}\n`;
+
+    });
+
+    const blob =
+        new Blob(
+            [csv],
+            {
+                type:"text/csv"
+            }
+        );
+
+    const a =
+        document.createElement("a");
+
+    a.href =
+        URL.createObjectURL(blob);
+
+    a.download =
+        "sales_export.csv";
+
+    a.click();
+}
+
+async function editInventory(id){
+
+    const item =
+        db.inventory.find(
+            i=>i.id===id
+        );
+
+    if(!item) return;
+
+    const name =
+        prompt(
+            "Item Name",
+            item.name
+        );
+
+    if(name===null) return;
+
+    const barcode =
+        prompt(
+            "Barcode",
+            item.barcode
+        );
+
+    if(barcode===null) return;
+
+    const cost =
+        prompt(
+            "Cost",
+            item.cost
+        );
+
+    if(cost===null) return;
+
+    const qty =
+        prompt(
+            "Quantity",
+            item.qty
+        );
+
+    if(qty===null) return;
+
+    item.name = name.trim();
+
+    item.barcode =
+        barcode.trim();
+
+    item.cost =
+        parseFloat(cost||0);
+
+    item.qty =
+        parseInt(qty||0);
+
+    renderAll();
+
+    await saveDatabase();
+}
+
+async function deleteInventory(id){
+
+    if(
+        !confirm(
+            "Delete inventory item?"
+        )
+    ) return;
+
+    db.inventory =
+        db.inventory.filter(
+            i=>i.id!==id
+        );
+
+    renderAll();
+
+    await saveDatabase();
+}
+
+async function editSale(id){
+
+    const sale =
+        db.sales.find(
+            s=>s.id===id
+        );
+
+    if(!sale) return;
+
+    const price =
+        prompt(
+            "Sale Price",
+            sale.salePrice
+        );
+
+    if(price===null) return;
+
+    const platform =
+        prompt(
+            "Platform",
+            sale.platform
+        );
+
+    if(platform===null) return;
+
+    const fees =
+        prompt(
+            "Fees",
+            sale.fees
+        );
+
+    if(fees===null) return;
+
+    const shipping =
+        prompt(
+            "Shipping",
+            sale.shipping
+        );
+
+    if(shipping===null) return;
+
+    sale.salePrice =
+        parseFloat(price||0);
+
+    sale.platform =
+        platform.trim();
+
+    sale.fees =
+        parseFloat(fees||0);
+
+    sale.shipping =
+        parseFloat(shipping||0);
+
+    sale.profit =
+        sale.salePrice
+        - sale.costTotal
+        - sale.fees
+        - sale.shipping;
+
+    renderAll();
+
+    await saveDatabase();
+}
+
+async function deleteSale(id){
+
+    const sale =
+        db.sales.find(
+            s=>s.id===id
+        );
+
+    if(!sale) return;
+
+    if(
+        !confirm(
+            "Delete sale?"
+        )
+    ) return;
+
+    const item =
+        db.inventory.find(
+            i=>i.id===sale.itemId
+        );
+
+    if(item){
+
+        item.qty += sale.qty;
+    }
+
+    db.sales =
+        db.sales.filter(
+            s=>s.id!==id
+        );
+
+    renderAll();
+
+    await saveDatabase();
+}
+
+async function editExpense(id){
+
+    const exp =
+        db.expenses.find(
+            e=>e.id===id
+        );
+
+    if(!exp) return;
+
+    const name =
+        prompt(
+            "Expense Name",
+            exp.name
+        );
+
+    if(name===null) return;
+
+    const amount =
+        prompt(
+            "Amount",
+            exp.amount
+        );
+
+    if(amount===null) return;
+
+    exp.name =
+        name.trim();
+
+    exp.amount =
+        parseFloat(amount||0);
+
+    renderAll();
+
+    await saveDatabase();
+}
+
+async function deleteExpense(id){
+
+    if(
+        !confirm(
+            "Delete expense?"
+        )
+    ) return;
+
+    db.expenses =
+        db.expenses.filter(
+            e=>e.id!==id
+        );
+
+    renderAll();
+
+    await saveDatabase();
+}
+
+async function startBarcodeScanner(mode){
+
+    if(
+        !navigator.mediaDevices ||
+        !navigator.mediaDevices.getUserMedia
+    ){
+
+        alert(
+            "Camera unsupported.\nUse Chrome localhost."
+        );
+
+        return;
+    }
+
+    document
+    .getElementById("scannerModal")
+    .classList.remove("hidden");
+
+    html5QrCode =
+        new Html5Qrcode("reader");
+
+    try{
+
+        await html5QrCode.start(
+            {
+                facingMode:"environment"
+            },
+            {
+                fps:10,
+                qrbox:{
+                    width:250,
+                    height:120
+                }
+            },
+            (decodedText)=>{
+
+                handleBarcode(
+                    decodedText,
+                    mode
+                );
+            }
+        );
+
+    }catch(err){
+
+        console.log(err);
+
+        alert(
+            "Camera failed:\n\n" + err
+        );
+
+        stopScanner();
+    }
+}
+
+async function stopScanner(){
+
+    try{
+
+        if(html5QrCode){
+
+            await html5QrCode.stop();
+
+            await html5QrCode.clear();
+        }
+
+    }catch(err){
+        console.log(err);
+    }
+
+    document
+    .getElementById("scannerModal")
+    .classList.add("hidden");
+}
+
+function handleBarcode(barcode,mode){
+
+    navigator.vibrate?.(120);
+
+    if(mode==="inventory"){
+
+        document
+        .getElementById("invBarcode")
+        .value = barcode;
+
+        stopScanner();
+
+        return;
+    }
+
+    if(mode==="sale"){
+
+        const item =
+            db.inventory.find(
+                i=>i.barcode===barcode
+            );
+
+        if(item){
+
+            document
+            .getElementById("saleItem")
+            .value = item.id;
+
+            document
+            .getElementById("saleQty")
+            .value = 1;
+
+            document
+            .getElementById("salePrice")
+            .focus();
+
+            stopScanner();
+
+        }else{
+
+            stopScanner();
+
+            alert(
+                "Barcode not found"
+            );
+        }
+    }
+}
+
+</script>
+
+</body>
+</html>
